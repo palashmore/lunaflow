@@ -7,9 +7,10 @@ interface AuthModalProps {
   user: any;
   onClose: () => void;
   onAuthChange: (user: any) => void;
+  onLogout?: () => void;
 }
 
-export default function AuthModal({ onClose, user, onAuthChange }: AuthModalProps) {
+export default function AuthModal({ onClose, user, onAuthChange, onLogout }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'signup' | 'config'>(isSupabaseConfigured ? 'login' : 'config');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,12 +74,22 @@ export default function AuthModal({ onClose, user, onAuthChange }: AuthModalProp
   }
 
   async function handleLogout() {
-    clearCentralAuthMeta();
-    if (supabase) {
-      await supabase.auth.signOut();
-      if (onAuthChange) onAuthChange(null);
+    if (onLogout) {
+      onLogout();
       onClose();
+      return;
     }
+    clearCentralAuthMeta();
+    try {
+      if (supabase) {
+        await supabase.auth.signOut({ scope: 'local' });
+      }
+    } catch (err) {
+      console.warn('Sign out warning:', err);
+    }
+    if (onAuthChange) onAuthChange(null);
+    onClose();
+    window.location.reload();
   }
 
   function handleSaveConfig(e: React.FormEvent) {
@@ -223,6 +234,8 @@ export default function AuthModal({ onClose, user, onAuthChange }: AuthModalProp
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  data-1p-ignore="true"
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-rose-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
                   required
                 />

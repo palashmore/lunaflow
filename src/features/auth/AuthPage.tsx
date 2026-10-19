@@ -330,6 +330,8 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    data-1p-ignore="true"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-rose-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
                     required
                   />

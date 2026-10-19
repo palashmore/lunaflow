@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 
 import { StorageAdapter, INITIAL_PROFILE, INITIAL_INVENTORY } from './services/storageAdapter';
+import { clearCentralAuthMeta } from './services/centralAuthService';
 import { calculateCycleStatus, formatDate } from './services/cycleEngine';
 import { supabase } from './services/supabase';
 import { UserProfile, DailyLog, SanitaryItem } from './types';
@@ -235,6 +236,38 @@ export default function App() {
     notes: '',
   };
 
+  // Complete logout & state cleanup
+  async function handleSignOut() {
+    clearCentralAuthMeta();
+    StorageAdapter.setUserId(null);
+    StorageAdapter.clearCurrentUserData();
+    localStorage.removeItem('lunaflow_auth_email');
+    setUser(null);
+    setIsGuestMode(false);
+    setProfile(INITIAL_PROFILE);
+    setDailyLogs({});
+    setInventory(INITIAL_INVENTORY);
+
+    try {
+      if (supabase) {
+        await supabase.auth.signOut({ scope: 'local' });
+      }
+    } catch (err) {
+      console.warn('Sign out warning:', err);
+    }
+
+    // Clear any Supabase cached tokens from local storage
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {}
+
+    window.location.href = '/';
+  }
+
   return (
     <div className={`min-h-screen text-slate-800 flex flex-col font-sans selection:bg-rose-200 ${
       profile.theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-[#FFF8F9]'
@@ -244,6 +277,7 @@ export default function App() {
         profile={profile}
         user={user}
         onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={handleSignOut}
         onToggleCamouflage={() => setIsCamouflaged(true)}
         onLockApp={() => setIsLocked(true)}
         onOpenReminders={() => setIsRemindersModalOpen(true)}
@@ -459,6 +493,7 @@ export default function App() {
         <AuthModal
           user={user}
           onClose={() => setIsAuthModalOpen(false)}
+          onLogout={handleSignOut}
           onAuthChange={async (u) => {
             setUser(u);
             if (!u) {

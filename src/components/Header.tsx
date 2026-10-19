@@ -8,7 +8,8 @@ import {
   Sun, 
   Moon, 
   Bell,
-  ShieldCheck
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../services/supabase';
 import { getCentralAuthMeta } from '../services/centralAuthService';
@@ -19,6 +20,7 @@ interface HeaderProps {
   profile: UserProfile;
   user: any;
   onOpenAuth: () => void;
+  onLogout?: () => void;
   onToggleCamouflage: () => void;
   onLockApp: () => void;
   onOpenReminders: () => void;
@@ -30,6 +32,7 @@ export default function Header({
   profile, 
   user,
   onOpenAuth, 
+  onLogout,
   onToggleCamouflage, 
   onLockApp, 
   onOpenReminders,
@@ -159,6 +162,18 @@ export default function Header({
               </>
             )}
           </button>
+
+          {/* Dedicated Direct Sign Out Button */}
+          {user && onLogout && (
+            <button
+              onClick={onLogout}
+              title="Sign Out of LunaFlow"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all active:scale-95 shadow-xs"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
