@@ -14,7 +14,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
-import { startCentralAuthLogin } from '../../services/centralAuthService';
 
 interface AuthPageProps {
   onLoginSuccess: (user: any) => void;
@@ -29,7 +28,6 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
   const [displayName, setDisplayName] = useState('');
   const [birthYear, setBirthYear] = useState('2002');
   const [loading, setLoading] = useState(false);
-  const [centralAuthLoading, setCentralAuthLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -49,22 +47,10 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
         } else {
           setErrorMsg(decoded || `Authentication error: ${errorCode}`);
         }
-        // Clean hash from URL so it doesn't linger on refresh
         window.history.replaceState(null, '', window.location.pathname);
       }
     }
   }, []);
-
-  async function handleCentralAuthLogin() {
-    try {
-      setCentralAuthLoading(true);
-      setErrorMsg('');
-      await startCentralAuthLogin();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to initiate CentralAuth OAuth 2.1 flow.');
-      setCentralAuthLoading(false);
-    }
-  }
 
   async function handleResendConfirmation() {
     const trimmedEmail = email.trim();
@@ -180,30 +166,7 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
             Your private cycle intelligence, hygiene stock & personal wellness sanctuary
           </p>
 
-          <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-purple-700 bg-purple-50/90 border border-purple-200 px-3 py-1 rounded-full max-w-fit mx-auto shadow-xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-            <span>CentralAuth OAuth 2.1 & Supabase Enabled</span>
           </div>
-        </div>
-
-        {/* CentralAuth OAuth 2.1 Single Sign-On Button */}
-        <div className="space-y-2.5">
-          <button
-            type="button"
-            onClick={handleCentralAuthLogin}
-            disabled={centralAuthLoading}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white font-bold text-xs shadow-md shadow-purple-200/60 hover:shadow-lg hover:shadow-purple-300/80 hover:opacity-95 transition-all flex items-center justify-center gap-2 group active:scale-[0.99] border border-purple-500/30"
-          >
-            <ShieldCheck className="w-4 h-4 text-purple-200 group-hover:scale-110 transition-transform" />
-            <span>{centralAuthLoading ? 'Connecting to CentralAuth...' : 'Sign In with CentralAuth SSO'}</span>
-          </button>
-
-          <div className="flex items-center gap-2 py-1">
-            <div className="flex-1 h-px bg-slate-200/80" />
-            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">or email & password</span>
-            <div className="flex-1 h-px bg-slate-200/80" />
-          </div>
-        </div>
 
         {/* Tab Switcher (Sign In vs Create Account) */}
         {!isResetPassword && (
