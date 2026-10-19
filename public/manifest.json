@@ -1,0 +1,17 @@
+{
+  "name": "LunaFlow - Women's Health & Cycle Sanctuary",
+  "short_name": "LunaFlow",
+  "description": "Smart, privacy-first cycle tracker, sanitary inventory, symptom journal and wellness PWA.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF1F2",
+  "theme_color": "#F43F5E",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

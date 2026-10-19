@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF1F2"/>
+      <stop offset="50%" stop-color="#FCE7F3"/>
+      <stop offset="100%" stop-color="#F3E8FF"/>
+    </linearGradient>
+    <linearGradient id="lunaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="40%" stop-color="#EC4899"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#EC4899" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+  <!-- Crescent Moon with blooming droplet -->
+  <g filter="url(#glow)" transform="translate(64, 56)">
+    <path d="M260 60 C180 60 110 120 90 200 C80 240 85 285 105 320 C110 330 125 330 125 318 C115 250 145 180 200 140 C235 115 280 105 320 115 C332 118 338 102 328 95 C308 72 284 60 260 60 Z" fill="url(#lunaGrad)"/>
+    <!-- Center Lotus Droplet -->
+    <path d="M192 160 C150 230 140 280 192 330 C244 280 234 230 192 160 Z" fill="url(#lunaGrad)" opacity="0.85"/>
+    <circle cx="192" cy="270" r="22" fill="#FFFFFF" opacity="0.9"/>
+  </g>
+</svg>
