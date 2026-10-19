@@ -13,6 +13,7 @@ import PinLockScreen from './components/PinLockScreen';
 import InsightsTab from './features/insights/InsightsTab';
 import RemindersTab from './features/reminders/RemindersTab';
 import WellnessTab from './features/wellness/WellnessTab';
+import AuthPage from './features/auth/AuthPage';
 
 import { 
   Sparkles, 
@@ -37,6 +38,8 @@ export default function App() {
   const [dailyLogs, setDailyLogs] = useState<Record<string, DailyLog>>(() => StorageAdapter.getDailyLogs());
   const [inventory, setInventory] = useState<SanitaryItem[]>(() => StorageAdapter.getInventory());
   const [user, setUser] = useState<any>(null);
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('today');
@@ -61,16 +64,21 @@ export default function App() {
     profile.isCycleRegular
   );
 
-  // Supabase Auth listener
+  // Supabase Auth listener & session restore
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setAuthChecking(false);
+      return;
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
+      setAuthChecking(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      setAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -128,6 +136,31 @@ export default function App() {
     const nextTheme = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: nextTheme };
     handleSaveProfile(updated);
+  }
+
+  // If loading auth state
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#FFF8F9] flex flex-col items-center justify-center space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center text-2xl animate-bounce shadow-md shadow-rose-200">
+          🌸
+        </div>
+        <p className="text-xs font-semibold text-rose-600 animate-pulse">Loading your Sanctuary...</p>
+      </div>
+    );
+  }
+
+  // Gated Authentication: If not logged in and not explicitly in guest demo mode, show AuthPage!
+  if (!user && !isGuestMode) {
+    return (
+      <AuthPage
+        onLoginSuccess={(authedUser) => {
+          setUser(authedUser);
+          setIsGuestMode(false);
+        }}
+        onEnterGuestMode={() => setIsGuestMode(true)}
+      />
+    );
   }
 
   // Camouflage Mode as Calculator
@@ -325,7 +358,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Diary Logging Modal (for quick popups from Today or Calendar) */}
+      {/* Diary Logging Modal */}
       {isLogModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in overflow-y-auto">
           <div className="w-full max-w-lg glass-panel p-6 rounded-3xl border border-white/80 shadow-2xl bg-white/95 my-6">
@@ -375,7 +408,12 @@ export default function App() {
         <AuthModal
           user={user}
           onClose={() => setIsAuthModalOpen(false)}
-          onAuthChange={(u) => setUser(u)}
+          onAuthChange={(u) => {
+            setUser(u);
+            if (!u) {
+              setIsGuestMode(false);
+            }
+          }}
         />
       )}
     </div>
