@@ -7,9 +7,11 @@ import {
   Globe, 
   Sun, 
   Moon, 
-  Bell 
+  Bell,
+  ShieldCheck
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../services/supabase';
+import { getCentralAuthMeta } from '../services/centralAuthService';
 import { UserProfile } from '../types';
 import { SupportedLanguage } from '../i18n';
 
@@ -34,6 +36,8 @@ export default function Header({
   onChangeLanguage,
   onToggleTheme
 }: HeaderProps) {
+  const centralAuthMeta = getCentralAuthMeta();
+
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-rose-100/80 px-4 py-3 backdrop-blur-md">
       <div className="max-w-xl mx-auto flex items-center justify-between">
@@ -119,6 +123,17 @@ export default function Header({
             >
               <Lock className="w-4 h-4" />
             </button>
+          )}
+
+          {/* CentralAuth Zero-Trust Role Badge */}
+          {user && centralAuthMeta && centralAuthMeta.roles.length > 0 && (
+            <span 
+              title={`CentralAuth Client: ${centralAuthMeta.clientId}\nRoles: ${centralAuthMeta.roles.join(', ')}\nPermissions: ${centralAuthMeta.permissions.join(', ')}`}
+              className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded-xl shadow-xs"
+            >
+              <ShieldCheck className="w-3 h-3 text-purple-600" />
+              <span>{centralAuthMeta.roles[0]}</span>
+            </span>
           )}
 
           {/* Cloud Auth Status */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   Mail, 
@@ -9,9 +9,12 @@ import {
   Heart, 
   CheckCircle2, 
   KeyRound, 
-  HelpCircle 
+  HelpCircle,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
+import { startCentralAuthLogin } from '../../services/centralAuthService';
 
 interface AuthPageProps {
   onLoginSuccess: (user: any) => void;
@@ -21,13 +24,75 @@ interface AuthPageProps {
 export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('lunaflow_auth_email') || '');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [birthYear, setBirthYear] = useState('2002');
   const [loading, setLoading] = useState(false);
+  const [centralAuthLoading, setCentralAuthLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Catch error parameters in URL hash from Supabase email link redirects (e.g., otp_expired)
+  useEffect(() => {
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const errorDescription = params.get('error_description');
+      const errorCode = params.get('error_code');
+
+      if (errorDescription || errorCode) {
+        const decoded = errorDescription ? decodeURIComponent(errorDescription.replace(/\+/g, ' ')) : '';
+        if (errorCode === 'otp_expired' || decoded.toLowerCase().includes('expired')) {
+          setErrorMsg('The email confirmation link has expired or was already used. Please request a new confirmation link below.');
+        } else {
+          setErrorMsg(decoded || `Authentication error: ${errorCode}`);
+        }
+        // Clean hash from URL so it doesn't linger on refresh
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, []);
+
+  async function handleCentralAuthLogin() {
+    try {
+      setCentralAuthLoading(true);
+      setErrorMsg('');
+      await startCentralAuthLogin();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to initiate CentralAuth OAuth 2.1 flow.');
+      setCentralAuthLoading(false);
+    }
+  }
+
+  async function handleResendConfirmation() {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMsg('Please enter your email address to receive a fresh confirmation link.');
+      return;
+    }
+    setResending(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      if (!supabase) throw new Error('Supabase is not configured.');
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+      setSuccessMsg(`A fresh confirmation email has been sent to ${trimmedEmail}! Please check your inbox and spam folder.`);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to resend confirmation email.');
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault();
@@ -35,13 +100,18 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
     setSuccessMsg('');
     setLoading(true);
 
+    const trimmedEmail = email.trim();
+    if (trimmedEmail) {
+      localStorage.setItem('lunaflow_auth_email', trimmedEmail);
+    }
+
     try {
       if (!supabase) {
         throw new Error('Supabase is not configured.');
       }
 
       if (isResetPassword) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
           redirectTo: window.location.origin,
         });
         if (error) throw error;
@@ -51,13 +121,14 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
 
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           options: {
             data: {
               display_name: displayName.trim() || 'Luna',
               birth_year: Number(birthYear),
             },
+            emailRedirectTo: window.location.origin,
           },
         });
         if (error) throw error;
@@ -66,12 +137,12 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
           setSuccessMsg('Account created successfully! Welcome to LunaFlow ✨');
           onLoginSuccess(data.user);
         } else {
-          setSuccessMsg('Account created! Please check your email inbox to confirm your email, then sign in.');
+          setSuccessMsg('Account registered! A confirmation email has been sent. Please verify it or sign in.');
           setIsSignUp(false);
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
         });
         if (error) throw error;
@@ -81,7 +152,8 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication failed. Please verify your credentials.');
+      const msg = err.message || 'Authentication failed. Please verify your credentials.';
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -108,9 +180,28 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
             Your private cycle intelligence, hygiene stock & personal wellness sanctuary
           </p>
 
-          <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-200 px-3 py-1 rounded-full max-w-fit mx-auto">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Supabase Cloud Connected</span>
+          <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-purple-700 bg-purple-50/90 border border-purple-200 px-3 py-1 rounded-full max-w-fit mx-auto shadow-xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+            <span>CentralAuth OAuth 2.1 & Supabase Enabled</span>
+          </div>
+        </div>
+
+        {/* CentralAuth OAuth 2.1 Single Sign-On Button */}
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            onClick={handleCentralAuthLogin}
+            disabled={centralAuthLoading}
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white font-bold text-xs shadow-md shadow-purple-200/60 hover:shadow-lg hover:shadow-purple-300/80 hover:opacity-95 transition-all flex items-center justify-center gap-2 group active:scale-[0.99] border border-purple-500/30"
+          >
+            <ShieldCheck className="w-4 h-4 text-purple-200 group-hover:scale-110 transition-transform" />
+            <span>{centralAuthLoading ? 'Connecting to CentralAuth...' : 'Sign In with CentralAuth SSO'}</span>
+          </button>
+
+          <div className="flex items-center gap-2 py-1">
+            <div className="flex-1 h-px bg-slate-200/80" />
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">or email & password</span>
+            <div className="flex-1 h-px bg-slate-200/80" />
           </div>
         </div>
 
@@ -248,9 +339,25 @@ export default function AuthPage({ onLoginSuccess, onEnterGuestMode }: AuthPageP
           )}
 
           {errorMsg && (
-            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] leading-relaxed">
-              {errorMsg}
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] leading-relaxed flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <span>{errorMsg}</span>
+              </div>
             </div>
+          )}
+
+          {/* Resend confirmation button if required */}
+          {(errorMsg.toLowerCase().includes('confirm') || errorMsg.toLowerCase().includes('expired')) && (
+            <button
+              type="button"
+              disabled={resending}
+              onClick={handleResendConfirmation}
+              className="w-full py-2.5 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] hover:bg-rose-100 transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.99]"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${resending ? 'animate-spin' : ''}`} />
+              <span>{resending ? 'Sending fresh link...' : 'Resend Confirmation Email'}</span>
+            </button>
           )}
 
           {successMsg && (

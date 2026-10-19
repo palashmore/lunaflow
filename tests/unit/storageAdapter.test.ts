@@ -74,4 +74,30 @@ describe('StorageAdapter Unit Tests', () => {
     const logs = StorageAdapter.getDailyLogs();
     expect(logs['2026-10-19']?.flow).not.toBe('heavy');
   });
+
+  it('strictly isolates data between different user accounts', () => {
+    // User A logs in and records period data
+    StorageAdapter.setUserId('user_aaa_111');
+    StorageAdapter.saveProfile({ ...INITIAL_PROFILE, displayName: 'Pallavi', avgCycleLength: 32 });
+    StorageAdapter.saveDailyLog('2026-10-19', { flow: 'heavy', symptoms: ['cramps'] });
+
+    // Verify User A data
+    expect(StorageAdapter.getProfile().displayName).toBe('Pallavi');
+    expect(StorageAdapter.getDailyLogs()['2026-10-19'].flow).toBe('heavy');
+
+    // User B logs in
+    StorageAdapter.setUserId('user_bbb_222');
+    // User B must NOT see User A's profile or symptoms!
+    expect(StorageAdapter.getProfile().displayName).toBe('Luna');
+    expect(StorageAdapter.getDailyLogs()['2026-10-19']).toBeUndefined();
+
+    // User B saves their own data
+    StorageAdapter.saveProfile({ ...INITIAL_PROFILE, displayName: 'Sushmita', avgCycleLength: 26 });
+    expect(StorageAdapter.getProfile().displayName).toBe('Sushmita');
+
+    // Switch back to User A
+    StorageAdapter.setUserId('user_aaa_111');
+    expect(StorageAdapter.getProfile().displayName).toBe('Pallavi');
+    expect(StorageAdapter.getDailyLogs()['2026-10-19'].flow).toBe('heavy');
+  });
 });

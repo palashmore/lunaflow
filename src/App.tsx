@@ -14,6 +14,7 @@ import InsightsTab from './features/insights/InsightsTab';
 import RemindersTab from './features/reminders/RemindersTab';
 import WellnessTab from './features/wellness/WellnessTab';
 import AuthPage from './features/auth/AuthPage';
+import OAuthCallback from './features/auth/OAuthCallback';
 
 import { 
   Sparkles, 
@@ -25,7 +26,7 @@ import {
   BookOpen
 } from 'lucide-react';
 
-import { StorageAdapter } from './services/storageAdapter';
+import { StorageAdapter, INITIAL_PROFILE, INITIAL_INVENTORY } from './services/storageAdapter';
 import { calculateCycleStatus, formatDate } from './services/cycleEngine';
 import { supabase } from './services/supabase';
 import { UserProfile, DailyLog, SanitaryItem } from './types';
@@ -34,9 +35,9 @@ import { getTranslations, SupportedLanguage } from './i18n';
 type ActiveTab = 'today' | 'calendar' | 'diary' | 'sanitary' | 'insights' | 'report' | 'wellness';
 
 export default function App() {
-  const [profile, setProfile] = useState<UserProfile>(() => StorageAdapter.getProfile());
-  const [dailyLogs, setDailyLogs] = useState<Record<string, DailyLog>>(() => StorageAdapter.getDailyLogs());
-  const [inventory, setInventory] = useState<SanitaryItem[]>(() => StorageAdapter.getInventory());
+  const [profile, setProfile] = useState<UserProfile>(INITIAL_PROFILE);
+  const [dailyLogs, setDailyLogs] = useState<Record<string, DailyLog>>({});
+  const [inventory, setInventory] = useState<SanitaryItem[]>(INITIAL_INVENTORY);
   const [user, setUser] = useState<any>(null);
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
@@ -64,20 +65,41 @@ export default function App() {
     profile.isCycleRegular
   );
 
-  // Supabase Auth listener & session restore
+  // Hydrate user-isolated data when session changes
+  async function syncUserData(currentUser: any) {
+    if (currentUser) {
+      const data = await StorageAdapter.loadUserDataFromSupabase(currentUser);
+      setProfile(data.profile);
+      setDailyLogs(data.dailyLogs);
+      setInventory(data.inventory);
+    } else {
+      StorageAdapter.setUserId(null);
+      setProfile(INITIAL_PROFILE);
+      setDailyLogs({});
+      setInventory(INITIAL_INVENTORY);
+    }
+  }
+
+  // Supabase Auth listener & per-user session restore
   useEffect(() => {
     if (!supabase) {
       setAuthChecking(false);
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      if (currentUser) {
+        await syncUserData(currentUser);
+      }
       setAuthChecking(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      await syncUserData(currentUser);
       setAuthChecking(false);
     });
 
@@ -138,6 +160,28 @@ export default function App() {
     handleSaveProfile(updated);
   }
 
+  // If returning from CentralAuth OAuth 2.1 authorization
+  const isOAuthCallback = window.location.search.includes('code=') && 
+    (window.location.search.includes('state=') || window.location.pathname.includes('/oauth/callback'));
+
+  if (isOAuthCallback) {
+    return (
+      <OAuthCallback
+        onSuccess={async (authedUser) => {
+          setUser(authedUser);
+          setIsGuestMode(false);
+          await syncUserData(authedUser);
+          // Clean OAuth code from URL to prevent replay on page refresh
+          window.history.replaceState(null, '', window.location.pathname.replace('/oauth/callback', '/'));
+        }}
+        onErrorRedirect={() => {
+          window.history.replaceState(null, '', '/');
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
   // If loading auth state
   if (authChecking) {
     return (
@@ -154,11 +198,18 @@ export default function App() {
   if (!user && !isGuestMode) {
     return (
       <AuthPage
-        onLoginSuccess={(authedUser) => {
+        onLoginSuccess={async (authedUser) => {
           setUser(authedUser);
           setIsGuestMode(false);
+          await syncUserData(authedUser);
         }}
-        onEnterGuestMode={() => setIsGuestMode(true)}
+        onEnterGuestMode={() => {
+          StorageAdapter.setUserId(null);
+          setProfile(StorageAdapter.getProfile('guest'));
+          setDailyLogs(StorageAdapter.getDailyLogs('guest'));
+          setInventory(StorageAdapter.getInventory('guest'));
+          setIsGuestMode(true);
+        }}
       />
     );
   }
@@ -408,11 +459,12 @@ export default function App() {
         <AuthModal
           user={user}
           onClose={() => setIsAuthModalOpen(false)}
-          onAuthChange={(u) => {
+          onAuthChange={async (u) => {
             setUser(u);
             if (!u) {
               setIsGuestMode(false);
             }
+            await syncUserData(u);
           }}
         />
       )}

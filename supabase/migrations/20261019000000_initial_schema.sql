@@ -128,77 +128,100 @@ alter table public.reminders enable row level security;
 alter table public.wellness_content enable row level security;
 
 -- Profiles Policies
+drop policy if exists "Users can view own profile" on public.profiles;
 create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
 
+drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile" on public.profiles
   for insert with check (auth.uid() = id);
 
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile" on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
 
+drop policy if exists "Users can delete own profile" on public.profiles;
 create policy "Users can delete own profile" on public.profiles
   for delete using (auth.uid() = id);
 
 -- Cycles Policies
+drop policy if exists "Users can view own cycles" on public.cycles;
 create policy "Users can view own cycles" on public.cycles
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own cycles" on public.cycles;
 create policy "Users can insert own cycles" on public.cycles
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own cycles" on public.cycles;
 create policy "Users can update own cycles" on public.cycles
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own cycles" on public.cycles;
 create policy "Users can delete own cycles" on public.cycles
   for delete using (auth.uid() = user_id);
 
 -- Daily Logs Policies
+drop policy if exists "Users can view own daily_logs" on public.daily_logs;
 create policy "Users can view own daily_logs" on public.daily_logs
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own daily_logs" on public.daily_logs;
 create policy "Users can insert own daily_logs" on public.daily_logs
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own daily_logs" on public.daily_logs;
 create policy "Users can update own daily_logs" on public.daily_logs
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own daily_logs" on public.daily_logs;
 create policy "Users can delete own daily_logs" on public.daily_logs
   for delete using (auth.uid() = user_id);
 
 -- Sanitary Inventory Policies
+drop policy if exists "Users can view own inventory" on public.sanitary_inventory;
 create policy "Users can view own inventory" on public.sanitary_inventory
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own inventory" on public.sanitary_inventory;
 create policy "Users can insert own inventory" on public.sanitary_inventory
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own inventory" on public.sanitary_inventory;
 create policy "Users can update own inventory" on public.sanitary_inventory
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own inventory" on public.sanitary_inventory;
 create policy "Users can delete own inventory" on public.sanitary_inventory
   for delete using (auth.uid() = user_id);
 
 -- Sanitary Usage Logs Policies
+drop policy if exists "Users can view own usage logs" on public.sanitary_usage_logs;
 create policy "Users can view own usage logs" on public.sanitary_usage_logs
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own usage logs" on public.sanitary_usage_logs;
 create policy "Users can insert own usage logs" on public.sanitary_usage_logs
   for insert with check (auth.uid() = user_id);
 
 -- Reminders Policies
+drop policy if exists "Users can view own reminders" on public.reminders;
 create policy "Users can view own reminders" on public.reminders
   for select using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own reminders" on public.reminders;
 create policy "Users can insert own reminders" on public.reminders
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own reminders" on public.reminders;
 create policy "Users can update own reminders" on public.reminders
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own reminders" on public.reminders;
 create policy "Users can delete own reminders" on public.reminders
   for delete using (auth.uid() = user_id);
 
 -- Wellness Content Policy (Public Read)
+drop policy if exists "Allow public read on published wellness content" on public.wellness_content;
 create policy "Allow public read on published wellness content" on public.wellness_content
   for select using (is_published = true);
